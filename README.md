@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Button
+
+Foi implentado um botão no pino 21, representa um sensor de pulso, que fará o led piscar uma vez. Também foi implementada uma função com as configurações dos pinos.
+
 ## ESP_LOG
 
 Foi implementada a funcionalidade de log
