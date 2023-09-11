@@ -10,6 +10,8 @@
 /*define dos pinos*/
 #define LED 2 /*LED do kit*/
 
+void vTaskLed (void *pvParameters);
+
 void app_main(void)
 {
     gpio_config_t gpio_config_led;
@@ -22,8 +24,21 @@ void app_main(void)
     gpio_reset_pin(LED);
     gpio_config(&gpio_config_led);
 
-    printf("Hello World!\n");
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    TaskHandle_t xHandleLed;
+    if (xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleLed) == pdFAIL){
+        printf("LED - Erro ao criar vTaskLed.");
+    }
+
+    while (1)
+    {
+        printf("===> Aplicação principal <===\n");
+        vTaskDelay(pdMS_TO_TICKS(7500));
+    }
+    
+}
+
+void vTaskLed (void *pvParameters){
 
     while (1)
     {
@@ -33,6 +48,5 @@ void app_main(void)
         gpio_set_level(LED, pdFALSE);
         printf("LED apagado\n\n");
         vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-    
+    }    
 }
