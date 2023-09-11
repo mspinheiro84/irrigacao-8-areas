@@ -6,11 +6,14 @@
 
 /*include do ESP32*/
 #include "driver/gpio.h"
+#include "esp_log.h"
 
 /*define dos pinos*/
 #define LED 2 /*LED do kit*/
 
 void vTaskLed (void *pvParameters);
+
+static const char *TAG = "IRRIGACAO";
 
 void app_main(void)
 {
@@ -27,12 +30,12 @@ void app_main(void)
     
     TaskHandle_t xHandleLed;
     if (xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleLed) == pdFAIL){
-        printf("LED - Erro ao criar vTaskLed.");
+        ESP_LOGE(TAG, "Erro ao criar a task LED");
     }
 
     while (1)
     {
-        printf("===> Aplicação principal <===\n");
+        ESP_LOGI(TAG,"====> Aplicação principal <====\n\n");
         vTaskDelay(pdMS_TO_TICKS(7500));
     }
     
@@ -43,10 +46,10 @@ void vTaskLed (void *pvParameters){
     while (1)
     {
         gpio_set_level(LED, pdTRUE);
-        printf("LED acesso\n");
+        ESP_LOGI(TAG,"LED acesso");
         vTaskDelay(pdMS_TO_TICKS(500));
         gpio_set_level(LED, pdFALSE);
-        printf("LED apagado\n\n");
+        ESP_LOGI(TAG,"LED apagado\n");
         vTaskDelay(pdMS_TO_TICKS(1000));
     }    
 }
