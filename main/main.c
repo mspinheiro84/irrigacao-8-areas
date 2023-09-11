@@ -18,8 +18,7 @@ void vTaskButton (void *pvParameters);
 static const char *TAG = "IRRIGACAO";
 int flagBotao = 1;
 
-void app_main(void)
-{
+void configPinos(){
     gpio_config_t gpio_config_led;
     gpio_config_led.pin_bit_mask = 1ULL<<LED;
     gpio_config_led.mode = GPIO_MODE_OUTPUT;
@@ -39,6 +38,11 @@ void app_main(void)
 
     gpio_config(&gpio_config_led);
     gpio_config(&gpio_config_button);
+}
+
+void app_main(void)
+{
+    configPinos();
     
     TaskHandle_t xHandleLed;
     if (xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleLed) == pdFAIL){
