@@ -4,3 +4,6 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Blink
+
+Neste passo foi construido a função blink, o "hello world" dos microcontroladres, onde o pino 2 da placa, que já vem com um LED integrado, foi configurado como saída.

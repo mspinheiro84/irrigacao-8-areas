@@ -22,7 +22,7 @@ void app_main(void)
     gpio_reset_pin(LED);
     gpio_config(&gpio_config_led);
 
-    printf("Hello Word!\n");
+    printf("Hello World!\n");
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     while (1)
