@@ -3,6 +3,7 @@
 /*includes FreeRTOS*/
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 /*include do ESP32*/
 #include "driver/gpio.h"
@@ -13,14 +14,15 @@
 #define BUTTON 21 /*LED do kit*/
 
 void vTaskLed (void *pvParameters);
-void vTaskButton (void *pvParameters);
 
-uint32_t flagBotao = 1;
 static const char *TAG = "IRRIGACAO";
 
+SemaphoreHandle_t xHandleSemaphore = NULL;
+
 static void IRAM_ATTR gpio_isr_handle(void *arg){
-    //uint32_t gpio_num = (uint32_t) arg;
-    flagBotao = BUTTON;
+    BaseType_t pxHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(xHandleSemaphore, &pxHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(pxHigherPriorityTaskWoken);
 }
 
 void configPinos(){
@@ -47,37 +49,39 @@ void configPinos(){
 
 void app_main(void)
 {
-    configPinos();
-    
-    TaskHandle_t xHandleLed;
-    if (xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleLed) == pdFAIL){
-        ESP_LOGE(TAG, "Erro ao criar a task LED");
+    xHandleSemaphore = xSemaphoreCreateCounting(5,0);
+    if (xHandleSemaphore != pdFALSE){
+        configPinos();
+        
+        TaskHandle_t xHandleLed;
+
+        if (xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleLed) != pdFAIL){
+            gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
+            gpio_isr_handler_add(BUTTON, gpio_isr_handle, NULL);
+
+            while (1)
+            {
+                ESP_LOGI(TAG,"====> Aplicação principal <====\n\n");
+                vTaskDelay(pdMS_TO_TICKS(7500));
+            }    
+        } else {
+            ESP_LOGE(TAG, "Erro ao criar a task LED");
+        }
+    } else {
+        ESP_LOGE(TAG, "Erro ao criar o Semaphore - memória heap insuficiente");
     }
-
-
-    gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
-    gpio_isr_handler_add(BUTTON, gpio_isr_handle, NULL);
-
-    while (1)
-    {
-        ESP_LOGI(TAG,"====> Aplicação principal <====\n\n");
-        vTaskDelay(pdMS_TO_TICKS(7500));
-    }    
 }
 
 void vTaskLed (void *pvParameters){
 
     while (1)
     {
-        if(flagBotao == BUTTON){
-            gpio_set_level(LED, pdTRUE);
-            ESP_LOGI(TAG,"LED acesso");
-            vTaskDelay(pdMS_TO_TICKS(250));
-            gpio_set_level(LED, pdFALSE);
-            ESP_LOGI(TAG,"LED apagado\n");
-            vTaskDelay(pdMS_TO_TICKS(250));
-            flagBotao = 1;
-        }
+        xSemaphoreTake(xHandleSemaphore, portMAX_DELAY);
+        gpio_set_level(LED, pdTRUE);
+        ESP_LOGI(TAG,"LED acesso");
+        vTaskDelay(pdMS_TO_TICKS(250));
+        gpio_set_level(LED, pdFALSE);
+        ESP_LOGI(TAG,"LED apagado\n");
         vTaskDelay(pdMS_TO_TICKS(250));
     }    
 }
