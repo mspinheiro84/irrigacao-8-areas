@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Task contador
+
+A task led foi modificada para blink e foi implementado uma task contadora para contar no número de acionamentos do botão e suspender a task blink em 10 acionamentos e libera-la no 13ª
+
 ## Semaphore
 
 Foi implementado um semáforo para sincronizar a interrupção do botão e a execução de uma tarefa.
