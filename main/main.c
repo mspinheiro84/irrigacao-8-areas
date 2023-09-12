@@ -15,8 +15,13 @@
 void vTaskLed (void *pvParameters);
 void vTaskButton (void *pvParameters);
 
+uint32_t flagBotao = 1;
 static const char *TAG = "IRRIGACAO";
-int flagBotao = 1;
+
+static void IRAM_ATTR gpio_isr_handle(void *arg){
+    //uint32_t gpio_num = (uint32_t) arg;
+    flagBotao = BUTTON;
+}
 
 void configPinos(){
     gpio_config_t gpio_config_led;
@@ -31,7 +36,7 @@ void configPinos(){
     gpio_config_button.mode = GPIO_MODE_INPUT;
     gpio_config_button.pull_up_en = GPIO_PULLUP_ENABLE;
     gpio_config_button.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    gpio_config_button.intr_type = GPIO_INTR_DISABLE;
+    gpio_config_button.intr_type = GPIO_INTR_POSEDGE;
 
     gpio_reset_pin(LED);
     gpio_reset_pin(BUTTON);
@@ -49,10 +54,9 @@ void app_main(void)
         ESP_LOGE(TAG, "Erro ao criar a task LED");
     }
 
-    TaskHandle_t xHandleButton;
-    if (xTaskCreate(vTaskButton, "BUTTON", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleButton) == pdFAIL){
-        ESP_LOGE(TAG, "Erro ao criar a task BUTTON");
-    }
+
+    gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
+    gpio_isr_handler_add(BUTTON, gpio_isr_handle, NULL);
 
     while (1)
     {
@@ -65,23 +69,15 @@ void vTaskLed (void *pvParameters){
 
     while (1)
     {
-        if(flagBotao == 0){
+        if(flagBotao == BUTTON){
             gpio_set_level(LED, pdTRUE);
             ESP_LOGI(TAG,"LED acesso");
             vTaskDelay(pdMS_TO_TICKS(250));
             gpio_set_level(LED, pdFALSE);
             ESP_LOGI(TAG,"LED apagado\n");
             vTaskDelay(pdMS_TO_TICKS(250));
+            flagBotao = 1;
         }
-        vTaskDelay(pdMS_TO_TICKS(250));
-    }    
-}
-
-void vTaskButton (void *pvParameters){
-    
-    while (1)
-    {
-        flagBotao = gpio_get_level(BUTTON);
         vTaskDelay(pdMS_TO_TICKS(250));
     }    
 }
