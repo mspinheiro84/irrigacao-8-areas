@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Interrupção
+
+Foi adicionado uma interrpção no botão para evitar perder pulso no momento de delay da função que trata o botão
+
 ## Button
 
 Foi implentado um botão no pino 21, representa um sensor de pulso, que fará o led piscar uma vez. Também foi implementada uma função com as configurações dos pinos.
