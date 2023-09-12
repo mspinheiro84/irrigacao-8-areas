@@ -13,6 +13,8 @@
 #define LED 2 /*LED do kit*/
 #define BUTTON 21 /*LED do kit*/
 
+TaskHandle_t xHandleLed;
+void vTaskContador (void *pvParameters);
 void vTaskLed (void *pvParameters);
 
 static const char *TAG = "IRRIGACAO";
@@ -53,9 +55,11 @@ void app_main(void)
     if (xHandleSemaphore != pdFALSE){
         configPinos();
         
-        TaskHandle_t xHandleLed;
+        TaskHandle_t xHandleContador;
 
-        if (xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleLed) != pdFAIL){
+        if ((xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleLed) != pdFAIL) &&
+            (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleContador) != pdFAIL)){
+
             gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
             gpio_isr_handler_add(BUTTON, gpio_isr_handle, NULL);
 
@@ -65,23 +69,39 @@ void app_main(void)
                 vTaskDelay(pdMS_TO_TICKS(7500));
             }    
         } else {
-            ESP_LOGE(TAG, "Erro ao criar a task LED");
+            ESP_LOGE(TAG, "Erro ao criar task");
         }
     } else {
         ESP_LOGE(TAG, "Erro ao criar o Semaphore - memória heap insuficiente");
     }
 }
 
+void vTaskContador (void *pvParameters){
+    uint8_t cont = 0;
+    while (1)
+    {
+        xSemaphoreTake(xHandleSemaphore, portMAX_DELAY);
+        if (++cont == 10){
+            vTaskSuspend(xHandleLed);
+        }
+        if (cont == 13){
+            vTaskResume(xHandleLed);
+            cont = 0;
+        }
+        ESP_LOGI(TAG, "Contador: %d\n", cont);
+    }
+    
+}
+
 void vTaskLed (void *pvParameters){
 
     while (1)
     {
-        xSemaphoreTake(xHandleSemaphore, portMAX_DELAY);
         gpio_set_level(LED, pdTRUE);
         ESP_LOGI(TAG,"LED acesso");
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(500));
         gpio_set_level(LED, pdFALSE);
         ESP_LOGI(TAG,"LED apagado\n");
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }    
 }
