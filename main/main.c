@@ -57,8 +57,8 @@ void app_main(void)
         
         TaskHandle_t xHandleContador;
 
-        if ((xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleLed) != pdFAIL) &&
-            (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE, NULL, 1, &xHandleContador) != pdFAIL)){
+        if ((xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleLed) != pdFAIL) &&
+            (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleContador) != pdFAIL)){
 
             gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
             gpio_isr_handler_add(BUTTON, gpio_isr_handle, NULL);
