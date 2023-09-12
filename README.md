@@ -4,9 +4,13 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Semaphore
+
+Foi implementado um semáforo para sincronizar a interrupção do botão e a execução de uma tarefa.
+
 ## Interrupção
 
-Foi adicionado uma interrpção no botão para evitar perder pulso no momento de delay da função que trata o botão
+Foi adicionado uma interrpção no botão para evitar perder pulso no momento de delay da função que trata o botão.
 
 ## Button
 
@@ -14,7 +18,7 @@ Foi implentado um botão no pino 21, representa um sensor de pulso, que fará o 
 
 ## ESP_LOG
 
-Foi implementada a funcionalidade de log
+Foi implementada a funcionalidade de log.
 
 ## Task
 
