@@ -4,9 +4,13 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Aumento da usStackDepth
+
+Aumento da usStackDepth nas task por estouro da pilha durante a execução.
+
 ## Task contador
 
-A task led foi modificada para blink e foi implementado uma task contadora para contar no número de acionamentos do botão e suspender a task blink em 10 acionamentos e libera-la no 13ª
+A task led foi modificada para blink e foi implementado uma task contadora para contar no número de acionamentos do botão e suspender a task blink em 10 acionamentos e libera-la no 13ª.
 
 ## Semaphore
 
