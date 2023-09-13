@@ -4,6 +4,12 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Conexão WIFI
+
+Implementação da conexão com wifi. Foi adcionado uma componente de conexão wifi no CMakeList.txt
+"set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/common_components/protocol_examples_common)"
+Para conexão é necessário adicionar o SSID e senha da rede no menuconfig.
+
 ## Aumento da usStackDepth
 
 Aumento da usStackDepth nas task por estouro da pilha durante a execução.
