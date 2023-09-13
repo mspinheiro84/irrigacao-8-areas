@@ -1,13 +1,20 @@
 #include <stdio.h>
+#include <string.h>
 
 /*includes FreeRTOS*/
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
 /*include do ESP32*/
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "nvs_flash.h"
+
+#include "protocol_examples_common.h"
 
 /*define dos pinos*/
 #define LED 2 /*LED do kit*/
@@ -51,6 +58,15 @@ void configPinos(){
 
 void app_main(void)
 {
+
+    /*Conexão com WIFI*/
+    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    example_connect();
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    
     xHandleSemaphore = xSemaphoreCreateCounting(5,0);
     if (xHandleSemaphore != pdFALSE){
         configPinos();
@@ -67,7 +83,10 @@ void app_main(void)
             {
                 ESP_LOGI(TAG,"====> Aplicação principal <====\n\n");
                 vTaskDelay(pdMS_TO_TICKS(7500));
-            }    
+            }
+            
+            example_disconnect();
+
         } else {
             ESP_LOGE(TAG, "Erro ao criar task");
         }
