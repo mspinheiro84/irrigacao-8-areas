@@ -4,6 +4,12 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Separação das funcionalidades WIFI
+
+As funcionalidades da conexão com wifi foram separados em arquivo próprio, wifi.c.
+O arquivo foi baseado no exemplo "station" da expressif do github.
+https://github.com/espressif/esp-idf/tree/master/examples/wifi/getting_started/station
+
 ## Separação das funcionalidades HTTP Request
 
 As funcionalidades de requisição http client foram separadas em arquivo próprio, http_client.c.
