@@ -107,10 +107,11 @@ void app_main(void)
 
 
 void vTaskHttpRequest (void *pvParameters){
-    
+    char *data;
     while (1)
     {        
-        http_client_request("http://worldtimeapi.org/api/timezone/America/Recife");
+        data = http_client_request("http://worldtimeapi.org/api/timezone/America/Recife");
+        printf("\n\nAPI World Time:\n%s\n\n", data);
         vTaskDelay(pdMS_TO_TICKS(15000));
     }
     
