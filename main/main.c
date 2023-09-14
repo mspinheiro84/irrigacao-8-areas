@@ -15,10 +15,9 @@
 #include "nvs_flash.h"
 #include "esp_tls.h"
 
-#include "protocol_examples_common.h"
-
 #include "esp_http_client.h"
 
+#include "wifi.h"
 #include "http_client.h"
 
 /*define*/
@@ -65,11 +64,15 @@ void configPinos(){
 void app_main(void)
 {   
     /*Conexão com WIFI*/
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
 
-    example_connect();
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    wifi_init_sta();
     vTaskDelay(pdMS_TO_TICKS(5000));
 
     xHandleSemaphore = xSemaphoreCreateCounting(5,0);
