@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## HTTP Request
+
+Implementação de um request pela task HTTP client, com consumo de API de data e hora.
+
 ## Conexão WIFI
 
 Implementação da conexão com wifi. Foi adcionado uma componente de conexão wifi no CMakeList.txt
