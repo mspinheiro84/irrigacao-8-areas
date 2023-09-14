@@ -107,9 +107,9 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt){
     return ESP_OK;
 }
 
-void http_client_request(){
+void http_client_request(char *url){
     esp_http_client_config_t config = {
-        .url = "http://worldtimeapi.org/api/timezone/America/Recife",
+        .url = url,
         .event_handler = _http_event_handler,
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
