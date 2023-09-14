@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Separação das funcionalidades HTTP Request
+
+As funcionalidades de requisição http client foram separadas em arquivo próprio, http_client.c.
+
 ## HTTP Request
 
 Implementação de um request pela task HTTP client, com consumo de API de data e hora.
