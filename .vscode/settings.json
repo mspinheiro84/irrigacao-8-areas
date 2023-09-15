@@ -22,6 +22,7 @@
         "stdio.h": "c",
         "task.h": "c",
         "http_client.h": "c",
-        "event_groups.h": "c"
+        "event_groups.h": "c",
+        "gpio.h": "c"
     }
 }

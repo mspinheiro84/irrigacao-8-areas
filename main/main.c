@@ -33,10 +33,43 @@ static const char *TAG = "IRRIGACAO";
 
 SemaphoreHandle_t xHandleSemaphore = NULL;
 
+typedef struct {
+    int ano;
+    int mes;
+    int dia;
+    int hora;
+    int minuto;
+    int segundo;
+    int fuso;
+
+} DataHora;
+
 static void IRAM_ATTR gpio_isr_handle(void *arg){
     BaseType_t pxHigherPriorityTaskWoken = pdFALSE;
     xSemaphoreGiveFromISR(xHandleSemaphore, &pxHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(pxHigherPriorityTaskWoken);
+}
+
+void carregaHorario(DataHora *horario, char *dado){
+    char *aux;
+    aux = (char *) calloc(4, sizeof(char));
+    memcpy(aux, &dado[61], 4);
+    horario->ano = atoi(aux);
+    aux = (char *) calloc(3, sizeof(char));
+    memcpy(aux, &dado[87], 3);
+    horario->fuso = atoi(aux);
+    aux = (char *) calloc(2, sizeof(char));
+    memcpy(aux, &dado[78], 2);
+    horario->segundo = atoi(aux);
+    memcpy(aux, &dado[75], 2);
+    horario->minuto = atoi(aux);
+    memcpy(aux, &dado[72], 2);
+    horario->hora = atoi(aux);
+    memcpy(aux, &dado[69], 2);
+    horario->dia = atoi(aux);
+    memcpy(aux, &dado[66], 2);
+    horario->mes = atoi(aux);
+    free(aux);
 }
 
 void configPinos(){
@@ -107,12 +140,16 @@ void app_main(void)
 
 
 void vTaskHttpRequest (void *pvParameters){
-    char *data;
+    char *dado;
+    static DataHora horario;
     while (1)
     {        
-        data = http_client_request("http://worldtimeapi.org/api/timezone/America/Recife");
-        printf("\n\nAPI World Time:\n%s\n\n", data);
-        vTaskDelay(pdMS_TO_TICKS(15000));
+        dado = http_client_request("http://worldtimeapi.org/api/timezone/America/Recife");
+        //printf("\n\nAPI World Time:\n%s\n", dado);
+        carregaHorario(&horario, dado);
+        printf("\nExtração da data e hora:\nData: %d-%d-%d\nHora: %d:%d:%d\nFuso: %d\n\n", horario.dia, horario.mes, horario.ano, horario.hora, horario.minuto, horario.segundo, horario.fuso);
+        free(dado);
+        vTaskDelay(pdMS_TO_TICKS(8000));
     }
     
 }
