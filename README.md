@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Extração da data e hora
+
+Foi criado um strut DataHora para receber os dados da data, hora e fuso. Também foi implementada uma função para fazer a extração da data, hora e fuso do JSON
+
 ## Alteração na obtenção do JSON da request
 
 Foi alterada as funcionalidades do request para ficar independente do API usada e retornar o JSON para ser tratado na função que chamou a requisição.
