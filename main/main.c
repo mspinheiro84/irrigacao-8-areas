@@ -19,15 +19,22 @@
 
 #include "wifi.h"
 #include "http_client.h"
+#include "mqtt.h"
 
 /*define*/
 #define LED 2 /*LED do kit*/
 #define BUTTON 21 /*LED do kit*/
 
+/*topicos do mqtt*/
+#define TOPIC_SENSOR "sensor/botao"
+#define TOPIC_ATUADOR "atuador/led"
+
 TaskHandle_t xHandleLed;
 void vTaskContador (void *pvParameters);
 void vTaskLed (void *pvParameters);
 void vTaskHttpRequest (void *pvParameters);
+void vTaskMqttPublish (void *pvParameters);
+
 
 static const char *TAG = "IRRIGACAO";
 
@@ -106,7 +113,10 @@ void app_main(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    mqtt_app_start();
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    mqtt_app_subscribe(TOPIC_ATUADOR, 2);
 
     xHandleSemaphore = xSemaphoreCreateCounting(5,0);
     if (xHandleSemaphore != pdFALSE){
@@ -114,10 +124,12 @@ void app_main(void)
         
         TaskHandle_t xHandleContador;
         TaskHandle_t xHandleHttpRequest;
+        TaskHandle_t xHandleMqttPublish;
 
         if ((xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleLed) != pdFAIL) &&
             (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleContador) != pdFAIL) &&
-            (xTaskCreate(vTaskHttpRequest, "HTTP-REQUEST", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleHttpRequest) != pdFAIL)){
+            (xTaskCreate(vTaskHttpRequest, "HTTP-REQUEST", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleHttpRequest) != pdFAIL) &&
+            (xTaskCreate(vTaskMqttPublish, "MQTT-PUBLISH", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleMqttPublish) != pdFAIL)){
 
             gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
             gpio_isr_handler_add(BUTTON, gpio_isr_handle, NULL);
@@ -136,6 +148,20 @@ void app_main(void)
     } else {
         ESP_LOGE(TAG, "Erro ao criar o Semaphore - memória heap insuficiente");
     }
+}
+
+
+void vTaskMqttPublish (void *pvParameters){
+    int x = 0;
+    char payload[20];
+    while (1)
+    {
+        sprintf(payload, "%d", x++);
+        mqtt_app_publish(TOPIC_SENSOR, payload);
+        ESP_LOGI(TAG, "Sensor value: %s", payload);
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+    
 }
 
 
