@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## MQTT
+
+Foi implementado o protocolo MQTT tcp para comunicação remota.
+
 ## Extração da data e hora
 
 Foi criado um strut DataHora para receber os dados da data, hora e fuso. Também foi implementada uma função para fazer a extração da data, hora e fuso do JSON
