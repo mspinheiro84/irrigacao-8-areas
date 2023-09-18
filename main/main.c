@@ -51,25 +51,25 @@ static void IRAM_ATTR gpio_isr_handle(void *arg){
 }
 
 void carregaHorario(DataHora *horario, char *dado){
-    char *aux;
-    aux = (char *) calloc(4, sizeof(char));
-    memcpy(aux, &dado[61], 4);
-    horario->ano = atoi(aux);
-    aux = (char *) calloc(3, sizeof(char));
-    memcpy(aux, &dado[87], 3);
-    horario->fuso = atoi(aux);
-    aux = (char *) calloc(2, sizeof(char));
-    memcpy(aux, &dado[78], 2);
-    horario->segundo = atoi(aux);
-    memcpy(aux, &dado[75], 2);
-    horario->minuto = atoi(aux);
-    memcpy(aux, &dado[72], 2);
-    horario->hora = atoi(aux);
-    memcpy(aux, &dado[69], 2);
-    horario->dia = atoi(aux);
-    memcpy(aux, &dado[66], 2);
-    horario->mes = atoi(aux);
-    free(aux);
+    char *aux, *temp;
+    aux = strstr(dado, "\"datetime")+12;
+    temp = (char *) calloc(4, sizeof(char));
+    memcpy(temp, aux, 4);
+    horario->ano = atoi(temp);
+    temp = (char *) calloc(3, sizeof(char));
+    memcpy(temp, aux+26, 3);
+    horario->fuso = atoi(temp);
+    temp = (char *) calloc(2, sizeof(char));
+    memcpy(temp, aux+17, 2);
+    horario->segundo = atoi(temp);
+    memcpy(temp, aux+14, 2);
+    horario->minuto = atoi(temp);
+    memcpy(temp, aux+11, 2);
+    horario->hora = atoi(temp);
+    memcpy(temp, aux+8, 2);
+    horario->dia = atoi(temp);
+    memcpy(temp, aux+5, 2);
+    horario->mes = atoi(temp);
 }
 
 void configPinos(){
