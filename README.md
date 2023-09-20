@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Implementação da função reconectaWifi
+
+Foi implementado a função reconectaWifi na biblioteca wifi.c. Além de realizar a reconexão com wifi ela funcionará como validação da conexão para a requisição http e o mqtt.
+
 ## MQTT
 
 Foi implementado o protocolo MQTT tcp para comunicação remota.
