@@ -30,11 +30,14 @@
 #define TOPIC_ATUADOR "atuador/led"
 
 TaskHandle_t xHandleLed;
+TaskHandle_t xHandleContador;
+TaskHandle_t xHandleHttpRequest;
+TaskHandle_t xHandleMqttPublish;
+
 void vTaskContador (void *pvParameters);
 void vTaskLed (void *pvParameters);
 void vTaskHttpRequest (void *pvParameters);
 void vTaskMqttPublish (void *pvParameters);
-
 
 static const char *TAG = "IRRIGACAO";
 
@@ -113,19 +116,11 @@ void app_main(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    mqtt_app_start();
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    mqtt_app_subscribe(TOPIC_ATUADOR, 2);
 
     xHandleSemaphore = xSemaphoreCreateCounting(5,0);
     if (xHandleSemaphore != pdFALSE){
         configPinos();
         
-        TaskHandle_t xHandleContador;
-        TaskHandle_t xHandleHttpRequest;
-        TaskHandle_t xHandleMqttPublish;
-
         if ((xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleLed) != pdFAIL) &&
             (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleContador) != pdFAIL) &&
             (xTaskCreate(vTaskHttpRequest, "HTTP-REQUEST", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleHttpRequest) != pdFAIL) &&
@@ -152,13 +147,19 @@ void app_main(void)
 
 
 void vTaskMqttPublish (void *pvParameters){
+    mqtt_app_start();
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    mqtt_app_subscribe(TOPIC_ATUADOR, 2);
+
     int x = 0;
     char payload[20];
     while (1)
     {
-        sprintf(payload, "%d", x++);
-        mqtt_app_publish(TOPIC_SENSOR, payload);
-        ESP_LOGI(TAG, "Sensor value: %s", payload);
+        if (reconectaWifi()==ESP_OK){
+            sprintf(payload, "%d", x++);
+            mqtt_app_publish(TOPIC_SENSOR, payload);
+            ESP_LOGI(TAG, "Sensor value: %s", payload);
+        }
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
     
@@ -170,11 +171,15 @@ void vTaskHttpRequest (void *pvParameters){
     static DataHora horario;
     while (1)
     {        
-        dado = http_client_request("http://worldtimeapi.org/api/timezone/America/Recife");
-        //printf("\n\nAPI World Time:\n%s\n", dado);
-        carregaHorario(&horario, dado);
-        printf("\nExtração da data e hora:\nData: %d-%d-%d\nHora: %d:%d:%d\nFuso: %d\n\n", horario.dia, horario.mes, horario.ano, horario.hora, horario.minuto, horario.segundo, horario.fuso);
-        free(dado);
+        if (reconectaWifi()==ESP_OK){
+            dado = http_client_request("http://worldtimeapi.org/api/timezone/America/Recife");
+            if ((strlen(dado) > 340) && (strlen(dado) < 360)){
+                //printf("\n\nAPI World Time:\n%s\n", dado);
+                carregaHorario(&horario, dado);
+                printf("\nExtração da data e hora:\nData: %d-%d-%d\nHora: %d:%d:%d\nFuso: %d\n\n", horario.dia, horario.mes, horario.ano, horario.hora, horario.minuto, horario.segundo, horario.fuso);
+                free(dado);
+            }
+        }
         vTaskDelay(pdMS_TO_TICKS(8000));
     }
     

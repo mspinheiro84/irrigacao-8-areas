@@ -111,8 +111,8 @@ void wifi_init_sta(void)
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .password = EXAMPLE_ESP_WIFI_PASS,
+            .ssid = "AndroidAP9030",//EXAMPLE_ESP_WIFI_SSID,
+            .password = "dmiy1985",//EXAMPLE_ESP_WIFI_PASS,
             /* Authmode threshold resets to WPA2 as default if password matches WPA2 standards (pasword len => 8).
              * If you want to connect the device to deprecated WEP/WPA networks, Please set the threshold value
              * to WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK and set the password with length and format matching to
@@ -147,5 +147,17 @@ void wifi_init_sta(void)
                  EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
+    }
+}
+
+esp_err_t reconectaWifi(void){
+    wifi_ap_record_t ap_info;
+    if (esp_wifi_sta_get_ap_info(&ap_info)==ESP_OK){
+        //ESP_LOGI(TAG, "signal strength of AP %d", (int) ap_info.rssi);
+        return ESP_OK;
+    } else {
+        //ESP_LOGI(TAG, "Reconectando...");
+        esp_wifi_connect();
+        return esp_wifi_sta_get_ap_info(&ap_info);
     }
 }
