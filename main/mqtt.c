@@ -122,6 +122,10 @@ void mqtt_app_start(void)
     esp_mqtt_client_start(client);
 }
 
+void mqtt_app_reconnect(void){
+    esp_err_t err = esp_mqtt_client_reconnect(client);
+}
+
 
 void mqtt_app_publish(char *topic, char *payload){
     int msg_id = esp_mqtt_client_publish(client, topic, payload, 0, 1, 0);

@@ -146,19 +146,26 @@ void app_main(void)
 }
 
 
-void vTaskMqttPublish (void *pvParameters){
+void vTaskMqttPublish (void *pvParameters){    
     mqtt_app_start();
     vTaskDelay(pdMS_TO_TICKS(2000));
-    mqtt_app_subscribe(TOPIC_ATUADOR, 2);
-
+    int flagDisc = 1;
     int x = 0;
     char payload[20];
     while (1)
     {
         if (reconectaWifi()==ESP_OK){
+            if(flagDisc) {
+                mqtt_app_reconnect();
+                vTaskDelay(pdMS_TO_TICKS(2000));
+                mqtt_app_subscribe(TOPIC_ATUADOR, 2);
+                flagDisc = 0;
+            }
             sprintf(payload, "%d", x++);
             mqtt_app_publish(TOPIC_SENSOR, payload);
             ESP_LOGI(TAG, "Sensor value: %s", payload);
+        } else {
+            flagDisc = 1;
         }
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
