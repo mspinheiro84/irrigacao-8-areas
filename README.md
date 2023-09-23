@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Implementação da função mqtt_app_reconnect
+
+Foi implementado a função mqtt_app_reconnect na biblioteca mqtt.c. Ação necessária para reconexão com o broker mqtt.
+
 ## Implementação da função reconectaWifi
 
 Foi implementado a função reconectaWifi na biblioteca wifi.c. Além de realizar a reconexão com wifi ela funcionará como validação da conexão para a requisição http e o mqtt.
