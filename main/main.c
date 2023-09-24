@@ -14,12 +14,15 @@
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "esp_tls.h"
+#include "esp_netif_sntp.h"
+#include "esp_sleep.h"
 
 #include "esp_http_client.h"
 
 #include "wifi.h"
 #include "http_client.h"
 #include "mqtt.h"
+#include "sntp.h"
 
 /*define*/
 #define LED 2 /*LED do kit*/
@@ -31,15 +34,19 @@
 
 TaskHandle_t xHandleLed;
 TaskHandle_t xHandleContador;
+TaskHandle_t xHandleSntp;
 TaskHandle_t xHandleHttpRequest;
 TaskHandle_t xHandleMqttPublish;
 
-void vTaskContador (void *pvParameters);
 void vTaskLed (void *pvParameters);
+void vTaskContador (void *pvParameters);
+void vTaskSntp (void *pvParameters);
 void vTaskHttpRequest (void *pvParameters);
 void vTaskMqttPublish (void *pvParameters);
 
 static const char *TAG = "IRRIGACAO";
+
+static struct tm timeinfo;
 
 SemaphoreHandle_t xHandleSemaphore = NULL;
 
@@ -123,20 +130,18 @@ void app_main(void)
         
         if ((xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleLed) != pdFAIL) &&
             (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleContador) != pdFAIL) &&
+            (xTaskCreate(vTaskSntp, "SNTP", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleSntp) != pdFAIL) &&
             (xTaskCreate(vTaskHttpRequest, "HTTP-REQUEST", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleHttpRequest) != pdFAIL) &&
             (xTaskCreate(vTaskMqttPublish, "MQTT-PUBLISH", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleMqttPublish) != pdFAIL)){
 
             gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
             gpio_isr_handler_add(BUTTON, gpio_isr_handle, NULL);
-
             while (1)
             {
                 ESP_LOGI(TAG,"====> Aplicação principal <====\n\n");
                 vTaskDelay(pdMS_TO_TICKS(10000));
             }
             
-            //example_disconnect();
-
         } else {
             ESP_LOGE(TAG, "Erro ao criar task");
         }
@@ -188,6 +193,32 @@ void vTaskHttpRequest (void *pvParameters){
             }
         }
         vTaskDelay(pdMS_TO_TICKS(8000));
+    }
+    
+}
+
+void vTaskSntp (void *pvParameters){
+    static time_t now;
+    char data[15], hora[9];
+    while (1)
+    {
+        time(&now);
+        // Is time set? If not, tm_year will be (1970 - 1900).
+        if (timeinfo.tm_year < (2022 - 1900)) {
+            ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
+            obtain_time();
+            // update 'now' variable with current time
+            time(&now);
+        }
+        //Set timezone to Brazil Standard Time
+        setenv("TZ", "UTC+3", 1);
+        tzset();
+        localtime_r(&now, &timeinfo);        
+        strftime(data, sizeof(data), "%a %d/%m/%Y", &timeinfo);
+        strftime(hora, sizeof(hora), "%X", &timeinfo);
+        printf("\nData: %s\n", data);
+        printf("\nHorário no Brasil: %s\n\n", hora);
+        vTaskDelay(pdMS_TO_TICKS(10000));
     }
     
 }

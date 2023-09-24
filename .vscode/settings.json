@@ -27,6 +27,10 @@
         "queue.h": "c",
         "mqtt.h": "c",
         "mqtt_client.h": "c",
-        "esp_wifi_types.h": "c"
+        "esp_wifi_types.h": "c",
+        "esp_system.h": "c",
+        "esp_sleep.h": "c",
+        "esp_attr.h": "c",
+        "esp_wifi.h": "c"
     }
 }

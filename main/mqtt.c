@@ -123,7 +123,7 @@ void mqtt_app_start(void)
 }
 
 void mqtt_app_reconnect(void){
-    esp_err_t err = esp_mqtt_client_reconnect(client);
+    esp_mqtt_client_reconnect(client);
 }
 
 
