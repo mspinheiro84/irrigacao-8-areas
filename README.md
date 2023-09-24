@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## SNTP - Sincronização online de relógio
+
+Foi implementado de uma task para sincronização online da data e hora.
+
 ## Implementação da função mqtt_app_reconnect
 
 Foi implementado a função mqtt_app_reconnect na biblioteca mqtt.c. Ação necessária para reconexão com o broker mqtt.
