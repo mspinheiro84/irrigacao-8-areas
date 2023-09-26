@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Implementação da Struct Dados
+
+Foi criada a struct Dados, informações que serão passada para o servidor mqtt. Também foi implementada uma task para atualizar a contagem do sensor, em um minuto, na struct Dados.
+
 ## SNTP - Sincronização online de relógio
 
 Foi implementado de uma task para sincronização online da data e hora.
