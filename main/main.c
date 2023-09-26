@@ -32,24 +32,6 @@
 #define TOPIC_SENSOR "sensor/botao"
 #define TOPIC_ATUADOR "atuador/led"
 
-TaskHandle_t xHandleLed;
-TaskHandle_t xHandleContador;
-TaskHandle_t xHandleSntp;
-TaskHandle_t xHandleHttpRequest;
-TaskHandle_t xHandleMqttPublish;
-
-void vTaskLed (void *pvParameters);
-void vTaskContador (void *pvParameters);
-void vTaskSntp (void *pvParameters);
-void vTaskHttpRequest (void *pvParameters);
-void vTaskMqttPublish (void *pvParameters);
-
-static const char *TAG = "IRRIGACAO";
-
-static struct tm timeinfo;
-
-SemaphoreHandle_t xHandleSemaphore = NULL;
-
 typedef struct {
     int ano;
     int mes;
@@ -60,6 +42,40 @@ typedef struct {
     int fuso;
 
 } DataHora;
+
+typedef struct{
+    uint8_t sensor_vazao;
+    bool atuador_bomba;
+    bool atuador_solenoides[8];
+}Dados;
+
+static Dados dados = {
+    .sensor_vazao = pdFALSE,
+    .atuador_bomba = pdFALSE,
+    .atuador_solenoides = {pdFALSE, pdFALSE, pdFALSE, pdFALSE, pdFALSE, pdFALSE, pdFALSE, pdFALSE},
+};
+
+static const char *TAG = "IRRIGACAO";
+
+static struct tm timeinfo;
+
+uint8_t cont = 0;
+
+TaskHandle_t xHandleLed;
+TaskHandle_t xHandleContador;
+TaskHandle_t xHandleAtualizaSensor;
+TaskHandle_t xHandleSntp;
+TaskHandle_t xHandleHttpRequest;
+TaskHandle_t xHandleMqttPublish;
+
+SemaphoreHandle_t xHandleSemaphore = NULL;
+
+void vTaskLed (void *pvParameters);
+void vTaskContador (void *pvParameters);
+void vTaskAtualizaSensor (void *pvParameters);
+void vTaskSntp (void *pvParameters);
+void vTaskHttpRequest (void *pvParameters);
+void vTaskMqttPublish (void *pvParameters);
 
 static void IRAM_ATTR gpio_isr_handle(void *arg){
     BaseType_t pxHigherPriorityTaskWoken = pdFALSE;
@@ -124,12 +140,13 @@ void app_main(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
 
-    xHandleSemaphore = xSemaphoreCreateCounting(5,0);
+    xHandleSemaphore = xSemaphoreCreateCounting(10,0);
     if (xHandleSemaphore != pdFALSE){
         configPinos();
-        
+
         if ((xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleLed) != pdFAIL) &&
             (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleContador) != pdFAIL) &&
+            (xTaskCreate(vTaskAtualizaSensor, "ATUALIZA-SENSOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleAtualizaSensor) != pdFAIL) &&
             (xTaskCreate(vTaskSntp, "SNTP", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleSntp) != pdFAIL) &&
             (xTaskCreate(vTaskHttpRequest, "HTTP-REQUEST", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleHttpRequest) != pdFAIL) &&
             (xTaskCreate(vTaskMqttPublish, "MQTT-PUBLISH", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleMqttPublish) != pdFAIL)){
@@ -139,7 +156,7 @@ void app_main(void)
             while (1)
             {
                 ESP_LOGI(TAG,"====> Aplicação principal <====\n\n");
-                vTaskDelay(pdMS_TO_TICKS(10000));
+                vTaskDelay(pdMS_TO_TICKS(60000));
             }
             
         } else {
@@ -155,7 +172,6 @@ void vTaskMqttPublish (void *pvParameters){
     mqtt_app_start();
     vTaskDelay(pdMS_TO_TICKS(2000));
     int flagDisc = 1;
-    int x = 0;
     char payload[20];
     while (1)
     {
@@ -166,7 +182,7 @@ void vTaskMqttPublish (void *pvParameters){
                 mqtt_app_subscribe(TOPIC_ATUADOR, 2);
                 flagDisc = 0;
             }
-            sprintf(payload, "%d", x++);
+            sprintf(payload, "%d", dados.sensor_vazao);
             mqtt_app_publish(TOPIC_SENSOR, payload);
             ESP_LOGI(TAG, "Sensor value: %s", payload);
         } else {
@@ -224,18 +240,22 @@ void vTaskSntp (void *pvParameters){
 }
 
 void vTaskContador (void *pvParameters){
-    uint8_t cont = 0;
     while (1)
     {
         xSemaphoreTake(xHandleSemaphore, portMAX_DELAY);
-        if (++cont == 5){
-            vTaskSuspend(xHandleLed);
-        }
-        if (cont == 8){
-            vTaskResume(xHandleLed);
-            cont = 0;
-        }
-        ESP_LOGI(TAG, "Contador: %d\n", cont);
+        cont++;
+        //ESP_LOGI(TAG, "Contador: %d\n", cont);
+    }
+    
+}
+
+void vTaskAtualizaSensor (void *pvParameters){
+    while (1)
+    {
+        dados.sensor_vazao = cont;
+        cont = 0;
+        //ESP_LOGI(TAG, "Sensor atualizado %d", dados.sensor_vazao);
+        vTaskDelay(pdMS_TO_TICKS(60000)); //zera a cada 60 segundos
     }
     
 }
@@ -246,9 +266,9 @@ void vTaskLed (void *pvParameters){
     {
         gpio_set_level(LED, pdTRUE);
         ESP_LOGI(TAG,"LED acesso");
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(2000));
         gpio_set_level(LED, pdFALSE);
         ESP_LOGI(TAG,"LED apagado\n");
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }    
 }
