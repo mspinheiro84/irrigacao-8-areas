@@ -31,6 +31,10 @@
         "esp_system.h": "c",
         "esp_sleep.h": "c",
         "esp_attr.h": "c",
-        "esp_wifi.h": "c"
+        "esp_wifi.h": "c",
+        "esp_log.h": "c",
+        "stdbool.h": "c",
+        "esp_event.h": "c",
+        "nvs_flash.h": "c"
     }
 }

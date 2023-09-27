@@ -16,6 +16,7 @@
 #include "esp_tls.h"
 #include "esp_netif_sntp.h"
 #include "esp_sleep.h"
+#include "mqtt_client.h"
 
 #include "esp_http_client.h"
 
@@ -81,6 +82,12 @@ static void IRAM_ATTR gpio_isr_handle(void *arg){
     BaseType_t pxHigherPriorityTaskWoken = pdFALSE;
     xSemaphoreGiveFromISR(xHandleSemaphore, &pxHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(pxHigherPriorityTaskWoken);
+}
+
+void mqtt_app_data(void *pvParameters){
+    esp_mqtt_event_handle_t data = pvParameters;
+    printf("TOPIC=%.*s\r\n", data->topic_len, data->topic);
+    printf("DATA=%.*s\r\n", data->data_len, data->data);
 }
 
 void carregaHorario(DataHora *horario, char *dado){
@@ -184,7 +191,7 @@ void vTaskMqttPublish (void *pvParameters){
             }
             sprintf(payload, "%d", dados.sensor_vazao);
             mqtt_app_publish(TOPIC_SENSOR, payload);
-            ESP_LOGI(TAG, "Sensor value: %s", payload);
+            //ESP_LOGI(TAG, "Sensor value: %s", payload);
         } else {
             flagDisc = 1;
         }

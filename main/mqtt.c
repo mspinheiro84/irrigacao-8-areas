@@ -21,6 +21,14 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 
+typedef struct{
+    uint8_t sensor_vazao;
+    bool atuador_bomba;
+    bool atuador_solenoides[8];
+}Dados;
+
+static Dados data;
+
 static const char *TAG = "MQTT LIBRARY";
 
 esp_mqtt_client_handle_t client;
@@ -65,9 +73,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
+        // ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+        // printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+        // printf("DATA=%.*s\r\n", event->data_len, event->data);
+        // data.atuador_bomba = atoi(event->data) == 1 ? pdTRUE : pdFALSE;
+        // if (data.atuador_bomba) printf("Bomba ligada\n");
+        // else printf("Bomba desligada\n");
+        mqtt_app_data(event);
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -141,6 +153,3 @@ void mqtt_app_unsubscribe(char *topic){
     int msg_id = esp_mqtt_client_unsubscribe(client, topic);
     ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
 }
-
-
-        

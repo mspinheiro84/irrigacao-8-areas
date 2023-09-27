@@ -1,6 +1,7 @@
 #ifndef MQTT_H
 #define MQTT_H
 
+void mqtt_app_data(void *pvParameters);
 void mqtt_app_start(void);
 void mqtt_app_reconnect(void);
 void mqtt_app_publish(char *topic, char *payload);
