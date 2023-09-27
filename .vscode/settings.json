@@ -35,6 +35,7 @@
         "esp_log.h": "c",
         "stdbool.h": "c",
         "esp_event.h": "c",
-        "nvs_flash.h": "c"
+        "nvs_flash.h": "c",
+        "esp_netif_sntp.h": "c"
     }
 }

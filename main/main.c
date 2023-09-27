@@ -30,8 +30,11 @@
 #define BUTTON 21 /*LED do kit*/
 
 /*topicos do mqtt*/
-#define TOPIC_SENSOR "sensor/botao"
-#define TOPIC_ATUADOR "atuador/led"
+#define TOPIC_RESUMO "resumo"
+#define TOPIC_SENSOR "sensor/vazao"
+#define TOPIC_ATUADORES "atuadores"
+#define TOPIC_ATUADOR_BOMBA "atuador/bomba"
+#define TOPIC_ATUADOR_SOLENOIDES "atuador/solenoides"
 
 typedef struct {
     int ano;
@@ -46,14 +49,14 @@ typedef struct {
 
 typedef struct{
     uint8_t sensor_vazao;
-    bool atuador_bomba;
-    bool atuador_solenoides[8];
+    char atuador_bomba;
+    char atuador_solenoides[8];
 }Dados;
 
 static Dados dados = {
-    .sensor_vazao = pdFALSE,
-    .atuador_bomba = pdFALSE,
-    .atuador_solenoides = {pdFALSE, pdFALSE, pdFALSE, pdFALSE, pdFALSE, pdFALSE, pdFALSE, pdFALSE},
+    .sensor_vazao = 0,
+    .atuador_bomba = '0',
+    .atuador_solenoides = {'0','0','0','0','0','0','0','0'},
 };
 
 static const char *TAG = "IRRIGACAO";
@@ -86,8 +89,47 @@ static void IRAM_ATTR gpio_isr_handle(void *arg){
 
 void mqtt_app_data(void *pvParameters){
     esp_mqtt_event_handle_t data = pvParameters;
-    printf("TOPIC=%.*s\r\n", data->topic_len, data->topic);
-    printf("DATA=%.*s\r\n", data->data_len, data->data);
+    // printf("TOPIC=%.*s\n\n", data->topic_len, data->topic);
+    // printf("DATA=%.*s\n\n", data->data_len, data->data);
+    char topic[20];
+    sprintf(topic, "%.*s", data->topic_len, data->topic);
+    if(strcmp(topic, TOPIC_RESUMO) == 0) {
+        /*
+        modelo do JSON para o tópico resumo
+        {"atuadores":{"bomba":"0","solenoides":"00000000"},"sensor":{"vazao":"000"}}
+        */
+        //sensor
+        char sensor_vazao[5];
+        sprintf(sensor_vazao, "%.*s", 3, data->data+70);//posição 70 dados do sensor
+        printf("\nDATA=%.*s\n", data->data_len, data->data);
+        printf("Sensor recebido: %s\n", sensor_vazao);
+        printf("Sensor: %.3d\n", dados.sensor_vazao);
+        //atuadores
+        dados.atuador_bomba = data->data[23]; //posição 23 dados da bomba
+        for (int i = 0, j = 40; i < 8; i++, j++){ //posição 40 dados dos solenoides
+            dados.atuador_solenoides[i] = data->data[j];
+        }
+        printf("Bomba - %c\n", dados.atuador_bomba);
+        printf("Solenoides - %s\n\n", dados.atuador_solenoides);
+    } else if (strcmp(topic, TOPIC_ATUADORES) == 0) {
+        /*
+        modelo do JSON para o tópico atuadores
+        {"bomba":"0","solenoides":"00000000"}
+        */
+        dados.atuador_bomba = data->data[10]; //posição 10 dados da bomba
+        for (int i = 0, j = 27; i < 8; i++, j++){ //posição 27 dados dos solenoides
+            dados.atuador_solenoides[i] = data->data[j];
+        }
+        printf("\nDATA=%.*s\n", data->data_len, data->data);
+        printf("Bomba - %c\n", dados.atuador_bomba);
+        printf("Solenoides - %s\n\n", dados.atuador_solenoides);
+    } else if (strcmp(topic, TOPIC_ATUADOR_SOLENOIDES) == 0) {
+        sprintf(dados.atuador_solenoides, "%.*s", data->data_len-2, data->data+1);
+        printf("Solenoides - %s\n\n", dados.atuador_solenoides);
+    } else if (strcmp(topic, TOPIC_ATUADOR_BOMBA) == 0) {
+        dados.atuador_bomba = data->data[0];
+        printf("Bomba - %c\n\n", dados.atuador_bomba);
+    }
 }
 
 void carregaHorario(DataHora *horario, char *dado){
@@ -179,23 +221,40 @@ void vTaskMqttPublish (void *pvParameters){
     mqtt_app_start();
     vTaskDelay(pdMS_TO_TICKS(2000));
     int flagDisc = 1;
-    char payload[20];
+    char payload[78];
     while (1)
     {
         if (reconectaWifi()==ESP_OK){
             if(flagDisc) {
                 mqtt_app_reconnect();
                 vTaskDelay(pdMS_TO_TICKS(2000));
-                mqtt_app_subscribe(TOPIC_ATUADOR, 2);
+                mqtt_app_subscribe(TOPIC_RESUMO, 2);
+                mqtt_app_subscribe(TOPIC_ATUADORES, 2);
+                mqtt_app_subscribe(TOPIC_ATUADOR_BOMBA, 2);
+                mqtt_app_subscribe(TOPIC_ATUADOR_SOLENOIDES, 2);
                 flagDisc = 0;
             }
-            sprintf(payload, "%d", dados.sensor_vazao);
-            mqtt_app_publish(TOPIC_SENSOR, payload);
-            //ESP_LOGI(TAG, "Sensor value: %s", payload);
+            /*
+            Resumo: modelo do JSON para o tópico atuadores
+            {"atuadores":{"bomba":"0","solenoides":"00000000"},"sensor":{"vazao":"000"}}
+            */
+            sprintf(payload, "{\"atuadores\":{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"},\"sensor\":{\"vazao\":\"%.3d\"}}", dados.atuador_bomba, 8, dados.atuador_solenoides, dados.sensor_vazao);
+            mqtt_app_publish(TOPIC_RESUMO, payload);
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            // //sensor
+            // sprintf(payload, "%d", dados.sensor_vazao);
+            // mqtt_app_publish(TOPIC_SENSOR, payload);
+            // vTaskDelay(pdMS_TO_TICKS(2000));
+            // /*
+            // Atuadores: modelo do JSON para o tópico atuadores
+            // {"bomba":"0","solenoides":"00000000"}
+            // */
+            // sprintf(payload, "{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"}", dados.atuador_bomba, 8, dados.atuador_solenoides);
+            // mqtt_app_publish(TOPIC_ATUADORES, payload);
         } else {
             flagDisc = 1;
         }
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        vTaskDelay(pdMS_TO_TICKS(30000));
     }
     
 }
