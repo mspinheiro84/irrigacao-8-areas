@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Tratamento de dados do mqtt
+
+Foi implementada a função mqtt_app_data para tratar os dados recebidos pelo protocolo mqtt.
+
 ## Implementação da Struct Dados
 
 Foi criada a struct Dados, informações que serão passada para o servidor mqtt. Também foi implementada uma task para atualizar a contagem do sensor, em um minuto, na struct Dados.
