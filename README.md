@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Implemetação do JSON para mqtt
+
+Foi implementado um JSON para enviar e receber informação via mqtt.
+
 ## Tratamento de dados do mqtt
 
 Foi implementada a função mqtt_app_data para tratar os dados recebidos pelo protocolo mqtt.
