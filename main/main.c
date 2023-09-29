@@ -26,8 +26,9 @@
 #include "sntp.h"
 
 /*define*/
-#define LED 2 /*LED do kit*/
-#define BUTTON 21 /*LED do kit*/
+#define LED 2 //LED do kit
+#define BOMBA 19 //Pino da bomba
+#define BUTTON 21 //Pino do sensor
 
 /*topicos do mqtt*/
 #define TOPIC_RESUMO "resumo"
@@ -53,7 +54,7 @@ typedef struct{
     char atuador_solenoides[8];
 }Dados;
 
-static Dados dados = {
+static Dados estado, dados = {
     .sensor_vazao = 0,
     .atuador_bomba = '0',
     .atuador_solenoides = {'0','0','0','0','0','0','0','0'},
@@ -65,7 +66,7 @@ static struct tm timeinfo;
 
 uint8_t cont = 0;
 
-TaskHandle_t xHandleLed;
+TaskHandle_t xHandleAcionamento;
 TaskHandle_t xHandleContador;
 TaskHandle_t xHandleAtualizaSensor;
 TaskHandle_t xHandleSntp;
@@ -73,8 +74,9 @@ TaskHandle_t xHandleHttpRequest;
 TaskHandle_t xHandleMqttPublish;
 
 SemaphoreHandle_t xHandleSemaphore = NULL;
+SemaphoreHandle_t xHandleSemaphoreAcionamento = NULL;
 
-void vTaskLed (void *pvParameters);
+void vTaskAcionamento (void *pvParameters);
 void vTaskContador (void *pvParameters);
 void vTaskAtualizaSensor (void *pvParameters);
 void vTaskSntp (void *pvParameters);
@@ -85,6 +87,37 @@ static void IRAM_ATTR gpio_isr_handle(void *arg){
     BaseType_t pxHigherPriorityTaskWoken = pdFALSE;
     xSemaphoreGiveFromISR(xHandleSemaphore, &pxHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(pxHigherPriorityTaskWoken);
+}
+
+void ligaAgua(uint8_t bomba){
+    gpio_set_level(LED, pdTRUE);
+    ESP_LOGI(TAG,"Registro ligado");
+    gpio_set_level(BOMBA, bomba);
+    ESP_LOGI(TAG,"Bomba %d", bomba);
+    vTaskResume(xHandleAtualizaSensor);
+    gpio_intr_enable(BUTTON);
+}
+
+void desligaAgua(){
+    gpio_set_level(BOMBA, pdFALSE);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    gpio_set_level(LED, pdFALSE);
+    gpio_intr_disable(BUTTON);
+    vTaskSuspend(xHandleAtualizaSensor);
+    ESP_LOGI(TAG,"Registro desligado");
+}
+
+void acionamentos(){
+    if (estado.atuador_solenoides[0] == '1'){
+        if (estado.atuador_bomba == '1'){
+            ligaAgua(1);
+        } else {
+            ligaAgua(0);
+        }
+    } else {
+        desligaAgua();
+    }
+
 }
 
 void mqtt_app_data(void *pvParameters){
@@ -99,18 +132,19 @@ void mqtt_app_data(void *pvParameters){
         {"atuadores":{"bomba":"0","solenoides":"00000000"},"sensor":{"vazao":"000"}}
         */
         //sensor
-        char sensor_vazao[5];
-        sprintf(sensor_vazao, "%.*s", 3, data->data+70);//posição 70 dados do sensor
-        printf("\nDATA=%.*s\n", data->data_len, data->data);
-        printf("Sensor recebido: %s\n", sensor_vazao);
-        printf("Sensor: %.3d\n", dados.sensor_vazao);
+        // char sensor_vazao[5];
+        // sprintf(sensor_vazao, "%.*s", 3, data->data+70);//posição 70 dados do sensor
+        // printf("\nDATA=%.*s\n", data->data_len, data->data);
+        // printf("Sensor recebido: %s\n", sensor_vazao);
+        // printf("Sensor: %.3d\n", dados.sensor_vazao);
         //atuadores
-        dados.atuador_bomba = data->data[23]; //posição 23 dados da bomba
-        for (int i = 0, j = 40; i < 8; i++, j++){ //posição 40 dados dos solenoides
-            dados.atuador_solenoides[i] = data->data[j];
-        }
-        printf("Bomba - %c\n", dados.atuador_bomba);
-        printf("Solenoides - %s\n\n", dados.atuador_solenoides);
+        // dados.atuador_bomba = data->data[23]; //posição 23 dados da bomba
+        // for (int i = 0, j = 40; i < 8; i++, j++){ //posição 40 dados dos solenoides
+        //     dados.atuador_solenoides[i] = data->data[j];
+        // }
+        // printf("Bomba - %c\n", dados.atuador_bomba);
+        // printf("Solenoides - %s\n\n", dados.atuador_solenoides);
+        
     } else if (strcmp(topic, TOPIC_ATUADORES) == 0) {
         /*
         modelo do JSON para o tópico atuadores
@@ -120,16 +154,18 @@ void mqtt_app_data(void *pvParameters){
         for (int i = 0, j = 27; i < 8; i++, j++){ //posição 27 dados dos solenoides
             dados.atuador_solenoides[i] = data->data[j];
         }
-        printf("\nDATA=%.*s\n", data->data_len, data->data);
-        printf("Bomba - %c\n", dados.atuador_bomba);
-        printf("Solenoides - %s\n\n", dados.atuador_solenoides);
-    } else if (strcmp(topic, TOPIC_ATUADOR_SOLENOIDES) == 0) {
+        // printf("\nDATA=%.*s\n", data->data_len, data->data);
+        // printf("Bomba - %c\n", dados.atuador_bomba);
+        // printf("Solenoides - %s\n\n", dados.atuador_solenoides); 
+    } else if (strcmp(topic, TOPIC_ATUADOR_SOLENOIDES) == 0) { //Solenoides
         sprintf(dados.atuador_solenoides, "%.*s", data->data_len-2, data->data+1);
-        printf("Solenoides - %s\n\n", dados.atuador_solenoides);
-    } else if (strcmp(topic, TOPIC_ATUADOR_BOMBA) == 0) {
+        // printf("Solenoides - %s\n\n", dados.atuador_solenoides);
+    } else if (strcmp(topic, TOPIC_ATUADOR_BOMBA) == 0) { //Bomba
         dados.atuador_bomba = data->data[0];
-        printf("Bomba - %c\n\n", dados.atuador_bomba);
+        // printf("Bomba - %c\n\n", dados.atuador_bomba);
+        
     }
+    xSemaphoreGive(xHandleSemaphoreAcionamento);
 }
 
 void carregaHorario(DataHora *horario, char *dado){
@@ -156,7 +192,7 @@ void carregaHorario(DataHora *horario, char *dado){
 
 void configPinos(){
     gpio_config_t gpio_config_led;
-    gpio_config_led.pin_bit_mask = 1ULL<<LED;
+    gpio_config_led.pin_bit_mask = 1ULL<<LED | 1ULL<<BOMBA;
     gpio_config_led.mode = GPIO_MODE_OUTPUT;
     gpio_config_led.pull_up_en = GPIO_PULLUP_DISABLE;
     gpio_config_led.pull_down_en = GPIO_PULLDOWN_DISABLE;
@@ -170,6 +206,7 @@ void configPinos(){
     gpio_config_button.intr_type = GPIO_INTR_POSEDGE;
 
     gpio_reset_pin(LED);
+    gpio_reset_pin(BOMBA);
     gpio_reset_pin(BUTTON);
 
     gpio_config(&gpio_config_led);
@@ -190,10 +227,11 @@ void app_main(void)
     wifi_init_sta();
 
     xHandleSemaphore = xSemaphoreCreateCounting(10,0);
+    xHandleSemaphoreAcionamento = xSemaphoreCreateBinary();
     if (xHandleSemaphore != pdFALSE){
         configPinos();
 
-        if ((xTaskCreate(vTaskLed, "LED", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleLed) != pdFAIL) &&
+        if ((xTaskCreate(vTaskAcionamento, "Acionamento", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleAcionamento) != pdFAIL) &&
             (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleContador) != pdFAIL) &&
             (xTaskCreate(vTaskAtualizaSensor, "ATUALIZA-SENSOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleAtualizaSensor) != pdFAIL) &&
             (xTaskCreate(vTaskSntp, "SNTP", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleSntp) != pdFAIL) &&
@@ -202,10 +240,17 @@ void app_main(void)
 
             gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
             gpio_isr_handler_add(BUTTON, gpio_isr_handle, NULL);
+
+            vTaskSuspend(xHandleAtualizaSensor);
+            gpio_intr_disable(BUTTON);
+
+            estado = dados;
+
             while (1)
             {
                 ESP_LOGI(TAG,"====> Aplicação principal <====\n\n");
-                vTaskDelay(pdMS_TO_TICKS(60000));
+                printf("{\"atuadores\":{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"},\"sensor\":{\"vazao\":\"%.3d\"}}\n\n", estado.atuador_bomba, 8, estado.atuador_solenoides, estado.sensor_vazao);
+                vTaskDelay(pdMS_TO_TICKS(15000));
             }
             
         } else {
@@ -238,18 +283,18 @@ void vTaskMqttPublish (void *pvParameters){
             Resumo: modelo do JSON para o tópico atuadores
             {"atuadores":{"bomba":"0","solenoides":"00000000"},"sensor":{"vazao":"000"}}
             */
-            sprintf(payload, "{\"atuadores\":{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"},\"sensor\":{\"vazao\":\"%.3d\"}}", dados.atuador_bomba, 8, dados.atuador_solenoides, dados.sensor_vazao);
+            sprintf(payload, "{\"atuadores\":{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"},\"sensor\":{\"vazao\":\"%.3d\"}}", estado.atuador_bomba, 8, estado.atuador_solenoides, estado.sensor_vazao);
             mqtt_app_publish(TOPIC_RESUMO, payload);
             vTaskDelay(pdMS_TO_TICKS(2000));
             // //sensor
-            // sprintf(payload, "%d", dados.sensor_vazao);
+            // sprintf(payload, "%d", estado.sensor_vazao);
             // mqtt_app_publish(TOPIC_SENSOR, payload);
             // vTaskDelay(pdMS_TO_TICKS(2000));
             // /*
             // Atuadores: modelo do JSON para o tópico atuadores
             // {"bomba":"0","solenoides":"00000000"}
             // */
-            // sprintf(payload, "{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"}", dados.atuador_bomba, 8, dados.atuador_solenoides);
+            // sprintf(payload, "{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"}", estado.atuador_bomba, 8, estado.atuador_solenoides);
             // mqtt_app_publish(TOPIC_ATUADORES, payload);
         } else {
             flagDisc = 1;
@@ -270,11 +315,11 @@ void vTaskHttpRequest (void *pvParameters){
             if ((strlen(dado) > 340) && (strlen(dado) < 360)){
                 //printf("\n\nAPI World Time:\n%s\n", dado);
                 carregaHorario(&horario, dado);
-                printf("\nExtração da data e hora:\nData: %d-%d-%d\nHora: %d:%d:%d\nFuso: %d\n\n", horario.dia, horario.mes, horario.ano, horario.hora, horario.minuto, horario.segundo, horario.fuso);
+                // printf("\nExtração da data e hora:\nData: %d-%d-%d\nHora: %d:%d:%d\nFuso: %d\n\n", horario.dia, horario.mes, horario.ano, horario.hora, horario.minuto, horario.segundo, horario.fuso);
                 free(dado);
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(8000));
+        vTaskDelay(pdMS_TO_TICKS(15000));
     }
     
 }
@@ -318,23 +363,30 @@ void vTaskContador (void *pvParameters){
 void vTaskAtualizaSensor (void *pvParameters){
     while (1)
     {
-        dados.sensor_vazao = cont;
+        estado.sensor_vazao = cont;
         cont = 0;
-        //ESP_LOGI(TAG, "Sensor atualizado %d", dados.sensor_vazao);
-        vTaskDelay(pdMS_TO_TICKS(60000)); //zera a cada 60 segundos
+        ESP_LOGI(TAG, "Sensor atualizado %d", estado.sensor_vazao);
+        vTaskDelay(pdMS_TO_TICKS(15000)); //zera a cada 60 segundos
+
     }
     
 }
 
-void vTaskLed (void *pvParameters){
+void vTaskAcionamento (void *pvParameters){
+    uint8_t contAgua = 0;
 
     while (1)
     {
-        gpio_set_level(LED, pdTRUE);
-        ESP_LOGI(TAG,"LED acesso");
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        gpio_set_level(LED, pdFALSE);
-        ESP_LOGI(TAG,"LED apagado\n");
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        xSemaphoreTake(xHandleSemaphoreAcionamento, portMAX_DELAY);
+        if (dados.atuador_solenoides[0] == '1'){
+            estado.atuador_solenoides[0] = '1';
+            estado.atuador_bomba = dados.atuador_bomba;
+        } else {
+            estado.atuador_solenoides[0] = '0';
+            estado.atuador_bomba = '0';
+            dados.atuador_bomba = '0';
+        }
+        acionamentos();
+        // vTaskDelay(pdMS_TO_TICKS(15000));
     }    
 }
