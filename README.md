@@ -4,6 +4,10 @@ Este projeto visa criar um passo a passo, via commits de README, para automaçã
 
 Assim como a ativação e comunicação via aplicativo.
 
+## Atualização dos estados dos atuadores remotamente
+
+O JSON recebido via mqtt é lido e validado e os estados dos atuadores são atualizados. No mesmo formato o ESP32 envia um resumo dos status dos atuadores e sensor
+
 ## Implemetação do JSON para mqtt
 
 Foi implementado um JSON para enviar e receber informação via mqtt.
