@@ -89,6 +89,26 @@ static void IRAM_ATTR gpio_isr_handle(void *arg){
     portYIELD_FROM_ISR(pxHigherPriorityTaskWoken);
 }
 
+void publishResumoMqtt(){
+    char payload[78];
+    /*Resumo: modelo do JSON para o tópico atuadores
+    {"atuadores":{"bomba":"0","solenoides":"00000000"},"sensor":{"vazao":"000"}}
+    */
+    sprintf(payload, "{\"atuadores\":{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"},\"sensor\":{\"vazao\":\"%.3d\"}}", estado.atuador_bomba, 8, estado.atuador_solenoides, estado.sensor_vazao);
+    mqtt_app_publish(TOPIC_RESUMO, payload);
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    // //sensor
+    // sprintf(payload, "%d", estado.sensor_vazao);
+    // mqtt_app_publish(TOPIC_SENSOR, payload);
+    // vTaskDelay(pdMS_TO_TICKS(2000));
+    // /*
+    // Atuadores: modelo do JSON para o tópico atuadores
+    // {"bomba":"0","solenoides":"00000000"}
+    // */
+    // sprintf(payload, "{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"}", estado.atuador_bomba, 8, estado.atuador_solenoides);
+    // mqtt_app_publish(TOPIC_ATUADORES, payload);
+}
+
 void ligaAgua(uint8_t bomba){
     gpio_set_level(LED, pdTRUE);
     ESP_LOGI(TAG,"Registro ligado");
@@ -104,6 +124,7 @@ void desligaAgua(){
     gpio_set_level(LED, pdFALSE);
     gpio_intr_disable(BUTTON);
     vTaskSuspend(xHandleAtualizaSensor);
+    cont = 0;
     ESP_LOGI(TAG,"Registro desligado");
 }
 
@@ -117,7 +138,7 @@ void acionamentos(){
     } else {
         desligaAgua();
     }
-
+    publishResumoMqtt();
 }
 
 void mqtt_app_data(void *pvParameters){
@@ -145,27 +166,30 @@ void mqtt_app_data(void *pvParameters){
         // printf("Bomba - %c\n", dados.atuador_bomba);
         // printf("Solenoides - %s\n\n", dados.atuador_solenoides);
         
-    } else if (strcmp(topic, TOPIC_ATUADORES) == 0) {
-        /*
-        modelo do JSON para o tópico atuadores
-        {"bomba":"0","solenoides":"00000000"}
-        */
-        dados.atuador_bomba = data->data[10]; //posição 10 dados da bomba
-        for (int i = 0, j = 27; i < 8; i++, j++){ //posição 27 dados dos solenoides
-            dados.atuador_solenoides[i] = data->data[j];
+    } else {
+        if (strcmp(topic, TOPIC_ATUADORES) == 0) {
+            /*
+            modelo do JSON para o tópico atuadores
+            {"bomba":"0","solenoides":"00000000"}
+            */
+            dados.atuador_bomba = data->data[10]; //posição 10 dados da bomba
+            for (int i = 0, j = 27; i < 8; i++, j++){ //posição 27 dados dos solenoides
+                dados.atuador_solenoides[i] = data->data[j];
+            }
+            // printf("\nDATA=%.*s\n", data->data_len, data->data);
+            // printf("Bomba - %c\n", dados.atuador_bomba);
+            // printf("Solenoides - %s\n\n", dados.atuador_solenoides); 
+        } else if (strcmp(topic, TOPIC_ATUADOR_SOLENOIDES) == 0) { //Solenoides
+            sprintf(dados.atuador_solenoides, "%.*s", data->data_len-2, data->data+1);
+            // printf("Solenoides - %s\n\n", dados.atuador_solenoides);
+        } else if (strcmp(topic, TOPIC_ATUADOR_BOMBA) == 0) { //Bomba
+            dados.atuador_bomba = data->data[0];
+            // printf("Bomba - %c\n\n", dados.atuador_bomba);
+            
         }
-        // printf("\nDATA=%.*s\n", data->data_len, data->data);
-        // printf("Bomba - %c\n", dados.atuador_bomba);
-        // printf("Solenoides - %s\n\n", dados.atuador_solenoides); 
-    } else if (strcmp(topic, TOPIC_ATUADOR_SOLENOIDES) == 0) { //Solenoides
-        sprintf(dados.atuador_solenoides, "%.*s", data->data_len-2, data->data+1);
-        // printf("Solenoides - %s\n\n", dados.atuador_solenoides);
-    } else if (strcmp(topic, TOPIC_ATUADOR_BOMBA) == 0) { //Bomba
-        dados.atuador_bomba = data->data[0];
-        // printf("Bomba - %c\n\n", dados.atuador_bomba);
-        
+        xSemaphoreGive(xHandleSemaphoreAcionamento);
     }
-    xSemaphoreGive(xHandleSemaphoreAcionamento);
+    
 }
 
 void carregaHorario(DataHora *horario, char *dado){
@@ -235,7 +259,7 @@ void app_main(void)
             (xTaskCreate(vTaskContador, "CONTADOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleContador) != pdFAIL) &&
             (xTaskCreate(vTaskAtualizaSensor, "ATUALIZA-SENSOR", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleAtualizaSensor) != pdFAIL) &&
             (xTaskCreate(vTaskSntp, "SNTP", configMINIMAL_STACK_SIZE+1024, NULL, 1, &xHandleSntp) != pdFAIL) &&
-            (xTaskCreate(vTaskHttpRequest, "HTTP-REQUEST", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleHttpRequest) != pdFAIL) &&
+            // (xTaskCreate(vTaskHttpRequest, "HTTP-REQUEST", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleHttpRequest) != pdFAIL) &&
             (xTaskCreate(vTaskMqttPublish, "MQTT-PUBLISH", configMINIMAL_STACK_SIZE+1024, NULL, 3, &xHandleMqttPublish) != pdFAIL)){
 
             gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
@@ -266,7 +290,6 @@ void vTaskMqttPublish (void *pvParameters){
     mqtt_app_start();
     vTaskDelay(pdMS_TO_TICKS(2000));
     int flagDisc = 1;
-    char payload[78];
     while (1)
     {
         if (reconectaWifi()==ESP_OK){
@@ -279,23 +302,7 @@ void vTaskMqttPublish (void *pvParameters){
                 mqtt_app_subscribe(TOPIC_ATUADOR_SOLENOIDES, 2);
                 flagDisc = 0;
             }
-            /*
-            Resumo: modelo do JSON para o tópico atuadores
-            {"atuadores":{"bomba":"0","solenoides":"00000000"},"sensor":{"vazao":"000"}}
-            */
-            sprintf(payload, "{\"atuadores\":{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"},\"sensor\":{\"vazao\":\"%.3d\"}}", estado.atuador_bomba, 8, estado.atuador_solenoides, estado.sensor_vazao);
-            mqtt_app_publish(TOPIC_RESUMO, payload);
-            vTaskDelay(pdMS_TO_TICKS(2000));
-            // //sensor
-            // sprintf(payload, "%d", estado.sensor_vazao);
-            // mqtt_app_publish(TOPIC_SENSOR, payload);
-            // vTaskDelay(pdMS_TO_TICKS(2000));
-            // /*
-            // Atuadores: modelo do JSON para o tópico atuadores
-            // {"bomba":"0","solenoides":"00000000"}
-            // */
-            // sprintf(payload, "{\"bomba\":\"%c\",\"solenoides\":\"%.*s\"}", estado.atuador_bomba, 8, estado.atuador_solenoides);
-            // mqtt_app_publish(TOPIC_ATUADORES, payload);
+            publishResumoMqtt();            
         } else {
             flagDisc = 1;
         }
@@ -367,7 +374,6 @@ void vTaskAtualizaSensor (void *pvParameters){
         cont = 0;
         ESP_LOGI(TAG, "Sensor atualizado %d", estado.sensor_vazao);
         vTaskDelay(pdMS_TO_TICKS(15000)); //zera a cada 60 segundos
-
     }
     
 }
@@ -384,6 +390,8 @@ void vTaskAcionamento (void *pvParameters){
         } else {
             estado.atuador_solenoides[0] = '0';
             estado.atuador_bomba = '0';
+            estado.sensor_vazao = 0;
+            cont = 0;
             dados.atuador_bomba = '0';
         }
         acionamentos();
