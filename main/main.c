@@ -248,7 +248,8 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();
+    // wifi_init_sta();
+    wifi_init_softap();
 
     xHandleSemaphore = xSemaphoreCreateCounting(10,0);
     xHandleSemaphoreAcionamento = xSemaphoreCreateBinary();
